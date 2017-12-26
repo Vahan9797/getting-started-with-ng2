@@ -52,11 +52,39 @@ export class HeroService {
 	  };
 	}
 
-	getHero(id: number): Observable<Hero> {
-	  // Todo: send the message _after_ fetching the hero
-	  this.messageService.add(`HeroService: fetched hero id=${id}`);
-	  return of(HEROES.find(hero => hero.id === id));
+	searchHeroes(term: string): Observable<Hero[]> {
+		if(!term.trim()) {
+			return of([]);
+		}
+
+		return this.http.get<Hero[]>(`api/heroes?name=${term}`).pipe(
+			tap(_ => this.log(`found heroes matching "${term}"`)),
+			catchError(this.handleError<Hero[]>('searchheroes', []))
+		);
 	}
+
+  /** GET hero by id. Return `undefined` when id not found */
+  getHeroNo404<Data>(id: number): Observable<Hero> {
+    const url = `${this.heroesUrl}/?id=${id}`;
+    return this.http.get<Hero[]>(url)
+      .pipe(
+        map(heroes => heroes[0]), // returns a {0|1} element array
+        tap(h => {
+          const outcome = h ? `fetched` : `did not find`;
+          this.log(`${outcome} hero id=${id}`);
+        }),
+        catchError(this.handleError<Hero>(`getHero id=${id}`))
+      );
+  }
+
+  /** GET hero by id. Will 404 if id not found */
+  getHero(id: number): Observable<Hero> {
+    const url = `${this.heroesUrl}/${id}`;
+    return this.http.get<Hero>(url).pipe(
+      tap(_ => this.log(`fetched hero id=${id}`)),
+      catchError(this.handleError<Hero>(`getHero id=${id}`))
+    );
+  }
 
 		/** PUT: update the hero on the server */
 	updateHero (hero: Hero): Observable<any> {
